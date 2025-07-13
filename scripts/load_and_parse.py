@@ -136,6 +136,113 @@ def get_top_progressive_passers(df_passes, top_n=10):
     top_teams = progressive_passes.groupby('team.name').size().reset_index(name='progressive_pass_count').sort_values('progressive_pass_count', ascending=False).head(top_n)
     return top_players, top_teams
 
+def get_player_comparison(df_shots, df_passes, player1, player2):
+    """Compare two players across key metrics"""
+    comparison_data = []
+    
+    for player in [player1, player2]:
+        # Shot stats
+        player_shots = df_shots[df_shots['player.name'] == player]
+        total_shots = len(player_shots)
+        goals = len(player_shots[player_shots['shot.outcome.name'] == 'Goal'])
+        conversion_rate = (goals / total_shots * 100) if total_shots > 0 else 0
+        avg_xg = player_shots['shot.statsbomb_xg'].mean() if 'shot.statsbomb_xg' in player_shots.columns and not player_shots.empty else 0
+        
+        # Pass stats
+        player_passes = df_passes[df_passes['player.name'] == player]
+        total_passes = len(player_passes)
+        
+        # Progressive passes
+        prog_passes = player_passes.copy()
+        prog_passes['start_x'] = prog_passes['location'].apply(lambda x: x[0] if isinstance(x, (list, tuple)) and len(x) >= 2 else None)
+        prog_passes['end_x'] = prog_passes['pass.end_location'].apply(lambda x: x[0] if isinstance(x, (list, tuple)) and len(x) >= 2 else None)
+        prog_passes['forward_distance'] = prog_passes['end_x'] - prog_passes['start_x']
+        progressive_passes = len(prog_passes[(prog_passes['forward_distance'] > 10) & (prog_passes['forward_distance'].notna())])
+        
+        team = player_shots['team.name'].iloc[0] if not player_shots.empty else player_passes['team.name'].iloc[0] if not player_passes.empty else "Unknown"
+        
+        comparison_data.append({
+            'Player': player,
+            'Team': team,
+            'Total Shots': total_shots,
+            'Goals': goals,
+            'Conversion Rate (%)': round(conversion_rate, 1),
+            'Avg xG per Shot': round(avg_xg, 3),
+            'Total Passes': total_passes,
+            'Progressive Passes': progressive_passes
+        })
+    
+    return pd.DataFrame(comparison_data)
+
+def get_team_performance_summary(df_shots, df_passes, team_name):
+    """Get comprehensive team performance metrics"""
+    team_shots = df_shots[df_shots['team.name'] == team_name]
+    team_passes = df_passes[df_passes['team.name'] == team_name]
+    
+    # Shot metrics
+    total_shots = len(team_shots)
+    total_goals = len(team_shots[team_shots['shot.outcome.name'] == 'Goal'])
+    team_conversion = (total_goals / total_shots * 100) if total_shots > 0 else 0
+    avg_team_xg = team_shots['shot.statsbomb_xg'].mean() if 'shot.statsbomb_xg' in team_shots.columns and not team_shots.empty else 0
+    
+    # Pass metrics
+    total_passes = len(team_passes)
+    prog_passes = team_passes.copy()
+    prog_passes['start_x'] = prog_passes['location'].apply(lambda x: x[0] if isinstance(x, (list, tuple)) and len(x) >= 2 else None)
+    prog_passes['end_x'] = prog_passes['pass.end_location'].apply(lambda x: x[0] if isinstance(x, (list, tuple)) and len(x) >= 2 else None)
+    prog_passes['forward_distance'] = prog_passes['end_x'] - prog_passes['start_x']
+    progressive_passes = len(prog_passes[(prog_passes['forward_distance'] > 10) & (prog_passes['forward_distance'].notna())])
+    
+    # Top performers
+    top_scorers = team_shots.groupby('player.name').agg({
+        'shot.outcome.name': lambda x: (x == 'Goal').sum()
+    }).sort_values('shot.outcome.name', ascending=False).head(3)
+    
+    top_shooters = team_shots.groupby('player.name').size().sort_values(ascending=False).head(3)
+    
+    return {
+        'team_name': team_name,
+        'total_shots': total_shots,
+        'total_goals': total_goals,
+        'conversion_rate': round(team_conversion, 1),
+        'avg_xg': round(avg_team_xg, 3),
+        'total_passes': total_passes,
+        'progressive_passes': progressive_passes,
+        'top_scorers': top_scorers,
+        'top_shooters': top_shooters
+    }
+
+def get_position_heatmap_data(df_shots, df_passes, player_name):
+    """Get position data for creating heat maps"""
+    player_shots = df_shots[df_shots['player.name'] == player_name]
+    player_passes = df_passes[df_passes['player.name'] == player_name]
+    
+    # Extract shot positions
+    shot_positions = []
+    for _, shot in player_shots.iterrows():
+        if isinstance(shot['location'], (list, tuple)) and len(shot['location']) >= 2:
+            shot_positions.append({
+                'x': shot['location'][0],
+                'y': shot['location'][1],
+                'type': 'shot'
+            })
+    
+    # Extract pass start positions
+    pass_positions = []
+    for _, pass_event in player_passes.iterrows():
+        if isinstance(pass_event['location'], (list, tuple)) and len(pass_event['location']) >= 2:
+            pass_positions.append({
+                'x': pass_event['location'][0],
+                'y': pass_event['location'][1],
+                'type': 'pass'
+            })
+    
+    return {
+        'shots': shot_positions,
+        'passes': pass_positions,
+        'player': player_name
+    }
+
 def save_dataframes(df_shots, df_passes, output_dir='data'):
     output_path = Path(output_dir)
     output_path.mkdir(exist_ok=True)

@@ -10,6 +10,8 @@ A tactical football analytics toolkit using [StatsBomb Open Data](https://github
 - **Modern UI**: Dark theme with sidebar navigation and quick filters
 - Also included: Conversion rates, shot count, end_location - start_location to filter distance of progessive passes, team and player rankings for all categories, top teams given quick filters on the top. 
 - Can be used for tactical analysis, player comparisons, and scouting. 
+
+- New functionality included player comparison and a single page dedicated to team metrics.
 ```
 ## 📁 Project Structure
 

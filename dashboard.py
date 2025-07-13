@@ -119,6 +119,33 @@ def main():
     if df_shots.empty or df_passes.empty:
         st.error("No data found! Please ensure you have StatsBomb JSON files in the `data/` directory.")
         return
+    
+    # Competition/Data Source Information
+    st.markdown("### 📊 Data Sources & Competitions")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        **StatsBomb Open Data:**
+        - FIFA World Cup 2018 🏆
+        - FIFA Women's World Cup 2019 🏆
+        - UEFA Champions League matches ⚽
+        """)
+    
+    with col2:
+        st.markdown("""
+        **Enhanced Sample Data:**
+        - Real Madrid (La Liga) 🇪🇸
+        - Manchester United (Premier League) 🏴󠁧󠁢󠁥󠁮󠁧󠁿
+        - Spain National Team 🇪🇸
+        """)
+    
+    # Display data overview
+    unique_teams = df_shots['team.name'].nunique()
+    unique_competitions = ["World Cup 2018", "Women's World Cup 2019", "Champions League", "Sample Data"]
+    
+    st.info(f"📈 **Current Dataset**: {unique_teams} teams across {len(unique_competitions)} competitions/sources")
+    
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("Total Events", len(df_shots) + len(df_passes))
